@@ -1,0 +1,15 @@
+services:
+  quantmath:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/quantmath.db
+    volumes:
+      - quantmath_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  quantmath_data:

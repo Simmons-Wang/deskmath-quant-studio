@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: deskmath-quant-studio
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: DATABASE_PATH
+        value: /app/data/quantmath.db
+    disk:
+      name: quantmath-data
+      mountPath: /app/data
+      sizeGB: 1

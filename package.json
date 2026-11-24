@@ -1,0 +1,15 @@
+{
+  "name": "quant-mental-math",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quant Trader Mental Math Studio with Visual & Voice Modes, Speed Telemetry, and Mistake Coaching",
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c cyan,green \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "start": "NODE_ENV=production node --no-warnings server/dist/server/src/index.js",
+    "test": "npm --prefix server test && npm --prefix client run lint && npm --prefix client run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
