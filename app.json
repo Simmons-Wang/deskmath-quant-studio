@@ -1,0 +1,37 @@
+{
+  "name": "deskmath-quant-studio",
+  "options": {
+    "allow-unauthenticated": true,
+    "memory": "512Mi",
+    "cpu": "1",
+    "concurrency": 40,
+    "max-instances": 2
+  },
+  "env": {
+    "STORAGE_BACKEND": {
+      "description": "Storage backend (keep 'gcp' for Cloud Firestore persistence)",
+      "value": "gcp",
+      "required": false,
+      "order": 1
+    },
+    "ALLOW_LOCAL_AI_FALLBACK": {
+      "description": "Fall back to built-in Quant Strategy Engine when Gemini API key is blank",
+      "value": "true",
+      "required": false,
+      "order": 2
+    },
+    "GEMINI_API_KEY": {
+      "description": "Optional Google AI Gemini API key (leave empty to use built-in Quant Coach)",
+      "value": "",
+      "required": false,
+      "order": 3
+    }
+  },
+  "hooks": {
+    "precreate": {
+      "commands": [
+        "bash scripts/cloudrun-button-precreate.sh"
+      ]
+    }
+  }
+}

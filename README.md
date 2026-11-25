@@ -2,6 +2,8 @@
 
 Full-stack quantitative trading mental-math trainer built with **Next.js 16 (App Router, standalone TypeScript, Vanilla CSS)** and engineered exclusively for **Google Cloud** (`Cloud Run`, `Cloud Firestore`, `Cloud Storage`, `Secret Manager`, `Gemini API`, optional `Firebase Auth` & `Cloud Text-to-Speech`), optimized for both **PC Chrome** and **iPhone Chrome (iOS WebKit)**.
 
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run/?git_repo=https://github.com/Simmons-Wang/deskmath-quant-studio&revision=main)
+
 ## Key Features
 - **Mixed Integer Operations (`+`, `−`, `×`, `÷`)**: 3-digit addition (`154 + 353`), 2×2 multiplication (`56 × 23`), integer subtraction (with optional negative results + iPhone `±` sign toggle), and exact integer division (`1288 ÷ 23`).
 - **Dual Training Modes**:
@@ -19,19 +21,16 @@ Full-stack quantitative trading mental-math trainer built with **Next.js 16 (App
 
 ## Deploy 24/7 to `https://...run.app` (Google Cloud Run)
 
-### Option A: One-Script Provision & Deploy in Google Cloud Shell (Fastest)
-1. Open **[Google Cloud Shell](https://shell.cloud.google.com)** (pre-authenticated to your Google Cloud account with `gcloud` preinstalled).
-2. Clone or upload this repository (because it is private, either use a GitHub Personal Access Token or download the ZIP from GitHub in Chrome and click **⋮ → Upload** in Cloud Shell):
-   ```bash
-   git clone https://github.com/Simmons-Wang/deskmath-quant-studio.git
-   # If prompted for password, enter a GitHub Personal Access Token (or unzip deskmath-quant-studio-main.zip)
-   cd deskmath-quant-studio
-   ```
-3. Run the idempotent deployment script (interactively prompts for `PROJECT_ID` if unset; `GEMINI_API_KEY` is optional—the app also runs with the built-in Quant Coach):
-   ```bash
-   chmod +x scripts/deploy-gcp.sh
-   ./scripts/deploy-gcp.sh
-   ```
+### Option A: One-Click "Run on Google Cloud"
+Click the **[Run on Google Cloud](https://deploy.cloud.run/?git_repo=https://github.com/Simmons-Wang/deskmath-quant-studio&revision=main)** button above (uses [`app.json`](app.json) and builds [`Dockerfile`](Dockerfile) directly in your Google Cloud project).
+
+### Option B: Open in Google Cloud Shell & Run Full Provisioning Script
+Open **[Open in Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/Simmons-Wang/deskmath-quant-studio&cloudshell_git_branch=main&cloudshell_workspace=.)**, which clones this public repository automatically, then run:
+
+```bash
+chmod +x scripts/deploy-gcp.sh
+./scripts/deploy-gcp.sh
+```
 
 [`scripts/deploy-gcp.sh`](scripts/deploy-gcp.sh) automatically configures:
 1. **APIs**: Cloud Run, Cloud Build, Artifact Registry, Firestore, Cloud Storage, Secret Manager, and Cloud Text-to-Speech.
@@ -40,7 +39,7 @@ Full-stack quantitative trading mental-math trainer built with **Next.js 16 (App
 4. **Artifact Registry** with a 2-image cleanup policy (fits Google Cloud Always-Free 0.5 GB limit).
 5. **Secret Manager** (`deskmath-gemini-api-key`, when provided) + **Cloud Run** deployment (`--min-instances=0 --max-instances=2 --cpu=1 --memory=512Mi`) + live `/api/health` smoke check.
 
-### Option B: Auto-Deploy via GitHub Actions
+### Option C: Auto-Deploy via GitHub Actions
 Push/manual trigger via [`.github/workflows/deploy-gcp.yml`](.github/workflows/deploy-gcp.yml) after setting repository variable `GCP_PROJECT_ID` and secret `GCP_SA_KEY` (and optional `GEMINI_API_KEY`).
 
 ### Optional Personal Lockdown (Firebase Auth)
