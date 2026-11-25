@@ -1,4 +1,16 @@
 steps:
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - "-ceu"
+      - |
+        if ! gcloud artifacts repositories describe "${_AR_REPO}" --location="${_REGION}" --project="$PROJECT_ID" >/dev/null 2>&1; then
+          gcloud artifacts repositories create "${_AR_REPO}" \
+            --repository-format=docker \
+            --location="${_REGION}" \
+            --project="$PROJECT_ID"
+        fi
+
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "build"
@@ -30,11 +42,14 @@ steps:
       - "--memory=512Mi"
       - "--concurrency=40"
       - "--timeout=60"
+      - "--set-env-vars=^@^NODE_ENV=production@STORAGE_BACKEND=${_STORAGE_BACKEND}@GOOGLE_CLOUD_PROJECT=$PROJECT_ID@GCS_BUCKET_NAME=$PROJECT_ID-deskmath-media@AUTH_REQUIRED=${_AUTH_REQUIRED}@ALLOW_LOCAL_AI_FALLBACK=true@GEMINI_PRIMARY_MODEL=gemini-2.5-flash@GEMINI_LITE_MODEL=gemini-2.5-flash-lite"
 
 substitutions:
   _REGION: "us-central1"
   _AR_REPO: "deskmath-repo"
   _SERVICE_NAME: "deskmath-quant-studio"
+  _STORAGE_BACKEND: "gcp"
+  _AUTH_REQUIRED: "false"
 
 options:
   logging: CLOUD_LOGGING_ONLY

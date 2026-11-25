@@ -17,21 +17,31 @@ Full-stack quantitative trading mental-math trainer built with **Next.js 16 (App
 
 ---
 
-## Deploy 24/7 on Google Cloud Run
+## Deploy 24/7 to `https://...run.app` (Google Cloud Run)
 
-Run the idempotent provisioning & deployment script from Google Cloud Shell or any machine with `gcloud` authenticated:
+### Option A: One-Script Provision & Deploy in Google Cloud Shell (Fastest)
+1. Open **[Google Cloud Shell](https://shell.cloud.google.com)** (pre-authenticated to your Google Cloud account with `gcloud` preinstalled).
+2. Clone or upload this repository (because it is private, either use a GitHub Personal Access Token or download the ZIP from GitHub in Chrome and click **⋮ → Upload** in Cloud Shell):
+   ```bash
+   git clone https://github.com/Simmons-Wang/deskmath-quant-studio.git
+   # If prompted for password, enter a GitHub Personal Access Token (or unzip deskmath-quant-studio-main.zip)
+   cd deskmath-quant-studio
+   ```
+3. Run the idempotent deployment script (interactively prompts for `PROJECT_ID` if unset; `GEMINI_API_KEY` is optional—the app also runs with the built-in Quant Coach):
+   ```bash
+   chmod +x scripts/deploy-gcp.sh
+   ./scripts/deploy-gcp.sh
+   ```
 
-```bash
-chmod +x scripts/deploy-gcp.sh
-PROJECT_ID=your-gcp-project-id GEMINI_API_KEY=your-key ./scripts/deploy-gcp.sh
-```
-
-`scripts/deploy-gcp.sh` automatically configures:
+[`scripts/deploy-gcp.sh`](scripts/deploy-gcp.sh) automatically configures:
 1. **APIs**: Cloud Run, Cloud Build, Artifact Registry, Firestore, Cloud Storage, Secret Manager, and Cloud Text-to-Speech.
 2. **Least-Privilege Service Account**: `roles/datastore.user`, `roles/storage.objectAdmin`, `roles/secretmanager.secretAccessor`.
 3. **Cloud Firestore (Native, `us-central1`)** & **GCS Bucket** (uniform bucket-level access).
 4. **Artifact Registry** with a 2-image cleanup policy (fits Google Cloud Always-Free 0.5 GB limit).
-5. **Secret Manager** (`deskmath-gemini-api-key`) + **Cloud Run** deployment (`--min-instances=0 --max-instances=2 --cpu=1 --memory=512Mi`).
+5. **Secret Manager** (`deskmath-gemini-api-key`, when provided) + **Cloud Run** deployment (`--min-instances=0 --max-instances=2 --cpu=1 --memory=512Mi`) + live `/api/health` smoke check.
+
+### Option B: Auto-Deploy via GitHub Actions
+Push/manual trigger via [`.github/workflows/deploy-gcp.yml`](.github/workflows/deploy-gcp.yml) after setting repository variable `GCP_PROJECT_ID` and secret `GCP_SA_KEY` (and optional `GEMINI_API_KEY`).
 
 ### Optional Personal Lockdown (Firebase Auth)
 By default `AUTH_REQUIRED=false` (open access). To restrict your Cloud Run URL to your own Google account, set `AUTH_REQUIRED=true`, `ALLOWED_EMAILS=you@gmail.com`, and `NEXT_PUBLIC_FIREBASE_*` variables.
