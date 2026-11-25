@@ -1,15 +1,35 @@
 {
-  "name": "quant-mental-math",
+  "name": "deskmath-quant-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "Quant Trader Mental Math Studio with Visual & Voice Modes, Speed Telemetry, and Mistake Coaching",
   "scripts": {
-    "dev": "concurrently -n API,WEB -c cyan,green \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
-    "build": "npm --prefix client run build && npm --prefix server run build",
-    "start": "NODE_ENV=production node --no-warnings server/dist/server/src/index.js",
-    "test": "npm --prefix server test && npm --prefix client run lint && npm --prefix client run build"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/test-domain.ts",
+    "e2e": "tsx scripts/e2e-verify.ts"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^9.4.1",
+    "@google-cloud/storage": "^9.0.0",
+    "@google/genai": "^3.6.1",
+    "firebase": "^13.4.0",
+    "firebase-admin": "^14.5.1",
+    "lucide-react": "^1.79.0",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "playwright-core": "^1.65.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
   }
 }

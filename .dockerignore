@@ -1,10 +1,8 @@
 node_modules
-client/node_modules
-server/node_modules
-client/dist
-server/dist
-data
-*.db
-*.db-wal
-*.db-shm
-.env
+.next
+.git
+.local-data
+.e2e-artifacts
+npm-debug.log*
+.env*
+!.env.example

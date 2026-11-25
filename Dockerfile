@@ -1,36 +1,37 @@
-FROM node:22-slim AS builder
+FROM node:24-alpine AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json ./
-COPY shared ./shared
-COPY client/package.json ./client/
-COPY server/package.json ./server/
+COPY package.json package-lock.json ./
+RUN npm ci
 
-RUN npm install --prefix client && npm install --prefix server
+FROM node:24-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-COPY client ./client
-COPY server ./server
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
 
-RUN npm --prefix client run build && npm --prefix server run build
-
-FROM node:22-slim AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3001
-ENV DATABASE_PATH=/app/data/quantmath.db
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
 
-COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/server/package.json ./server/package.json
-COPY --from=builder /app/server/node_modules ./server/node_modules
-COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/client/dist ./client/dist
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    mkdir -p /app/.local-data && \
+    chown -R nextjs:nodejs /app
 
-RUN mkdir -p /app/data && chown -R node:node /app
-USER node
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD node -e "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+USER nextjs
 
-CMD ["node", "--no-warnings", "server/dist/server/src/index.js"]
+EXPOSE 8080
+
+CMD ["node", "server.js"]
