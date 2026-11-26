@@ -77,6 +77,7 @@ interface TrainArenaProps {
   onSessionSaved: (session: SessionRecord, attempts: AttemptRecord[]) => void;
   onOpenMistakes: (sessionId?: string) => void;
   onAskCoachAboutAttempt: (attemptId: string) => void;
+  onActiveChange?: (active: boolean) => void;
   announce: (message: string) => void;
 }
 
@@ -90,12 +91,14 @@ export function TrainArena({
   onSessionSaved,
   onOpenMistakes,
   onAskCoachAboutAttempt,
+  onActiveChange,
   announce,
 }: TrainArenaProps) {
   const [phase, setPhase] = useState<DrillPhase>("setup");
   const [rangeModalOpen, setRangeModalOpen] = useState(false);
   const [perQuestionTimeoutSec, setPerQuestionTimeoutSec] = useState<number>(0);
   const [showKeypad, setShowKeypad] = useState(false);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
 
   const [currentProblem, setCurrentProblem] = useState<MathProblem | null>(null);
   const [inputVal, setInputVal] = useState("");
@@ -120,6 +123,8 @@ export function TrainArena({
   const [isSaving, setIsSaving] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const showKeypadRef = useRef(false);
+  const isCoarsePointerRef = useRef(false);
   const problemStartRef = useRef<number>(0);
   const speechEndRef = useRef<number | null>(null);
   const sessionStartRef = useRef<number>(0);
@@ -135,6 +140,39 @@ export function TrainArena({
     currentProblemRef.current = currentProblem;
     attemptsRef.current = attempts;
   }, [attempts, currentProblem, phase]);
+
+  useEffect(() => {
+    showKeypadRef.current = showKeypad;
+  }, [showKeypad]);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+    const mq = window.matchMedia("(pointer: coarse)");
+    const syncPointer = () => {
+      isCoarsePointerRef.current = mq.matches;
+      setIsCoarsePointer(mq.matches);
+    };
+    syncPointer();
+    mq.addEventListener("change", syncPointer);
+    return () => mq.removeEventListener("change", syncPointer);
+  }, []);
+
+  useEffect(() => {
+    onActiveChange?.(phase === "running");
+    return () => onActiveChange?.(false);
+  }, [onActiveChange, phase]);
+
+  const focusIfHardwareKeyboard = useCallback(() => {
+    if (showKeypadRef.current || isCoarsePointerRef.current) {
+      return;
+    }
+    inputRef.current?.focus();
+  }, []);
 
   const speechRecSupported = useMemo(() => Boolean(getSpeechRecognitionCtor()), []);
   const ttsSupported = useMemo(() => hasSpeechSynthesis(), []);
@@ -379,12 +417,13 @@ export function TrainArena({
       }
 
       requestAnimationFrame(() => {
-        inputRef.current?.focus();
+        focusIfHardwareKeyboard();
       });
     },
     [
       config,
       finishSession,
+      focusIfHardwareKeyboard,
       settings.cloudTtsEnabled,
       settings.voiceName,
       startHandsFreeMic,
@@ -433,11 +472,12 @@ export function TrainArena({
         }
       },
     });
-    inputRef.current?.focus();
+    focusIfHardwareKeyboard();
   }, [
     config.mode,
     config.speechRate,
     finishSession,
+    focusIfHardwareKeyboard,
     settings.cloudTtsEnabled,
     settings.voiceName,
     startHandsFreeMic,
@@ -680,30 +720,20 @@ export function TrainArena({
       config.mode === "visual" || !config.blindVoiceMode || peekVisual;
 
     return (
-      <div className="stack-lg">
-        <div className="hud-strip">
-          <div className="hud-metric">
-            <span className="hud-label">
-              {config.format === "timed" ? "Remaining" : "Elapsed"} · {progressLabel}
-            </span>
-            <span className="hud-value tabular">{timeLabel}</span>
-          </div>
-          <div className="hud-metric">
-            <span className="hud-label">Speed (Q / min)</span>
-            <span className="hud-value tabular">{ppmSoFar}</span>
-          </div>
-          <div className="hud-metric">
-            <span className="hud-label">Avg Solve</span>
-            <span className="hud-value tabular">
-              {meanSoFarMs > 0 ? `${(meanSoFarMs / 1000).toFixed(2)}s` : "—"}
-            </span>
-          </div>
-          <div className="hud-metric">
-            <span className="hud-label">Accuracy · Streak</span>
-            <span className="hud-value tabular">
-              {accuracySoFar}% · {streak}
-            </span>
-          </div>
+      <div className="stack-sm">
+        <div className="drill-status-line" aria-label="Drill progress and pace">
+          <span>
+            {config.format === "timed" ? "Left" : "Time"}{" "}
+            <strong>{timeLabel}</strong> · {progressLabel}
+          </span>
+          <span>
+            Avg{" "}
+            <strong>
+              {meanSoFarMs > 0 ? `${(meanSoFarMs / 1000).toFixed(1)}s` : "—"}
+            </strong>{" "}
+            · <strong>{accuracySoFar}%</strong> · Streak{" "}
+            <strong>{streak}</strong> · <strong>{ppmSoFar}</strong>/m
+          </span>
         </div>
 
         <section className="problem-card" aria-label="Active math problem">
@@ -711,16 +741,16 @@ export function TrainArena({
             <span className="status-pill is-neutral">
               {config.mode === "visual" ? (
                 <>
-                  <Eye size={14} aria-hidden="true" /> Visual Mode
+                  <Eye size={14} aria-hidden="true" /> Visual
                 </>
               ) : config.mode === "voice_keys" ? (
                 <>
-                  <Headphones size={14} aria-hidden="true" /> Audio + Keys (
+                  <Headphones size={14} aria-hidden="true" /> Audio (
                   {config.speechRate}×)
                 </>
               ) : (
                 <>
-                  <Mic size={14} aria-hidden="true" /> Hands-Free Voice (
+                  <Mic size={14} aria-hidden="true" /> Voice (
                   {config.speechRate}×)
                 </>
               )}
@@ -732,25 +762,27 @@ export function TrainArena({
                   <button
                     type="button"
                     className="btn btn-sm"
+                    title="Repeat (R)"
                     onClick={replayAudio}
                   >
-                    <Volume2 size={15} aria-hidden="true" /> Repeat (R)
+                    <Volume2 size={15} aria-hidden="true" /> Repeat
                   </button>
                   <button
                     type="button"
                     className="btn btn-sm"
+                    title="Toggle equation (V)"
                     onClick={() => {
                       setPeekVisual((v) => !v);
-                      inputRef.current?.focus();
+                      focusIfHardwareKeyboard();
                     }}
                   >
                     {peekVisual ? (
                       <>
-                        <EyeOff size={15} aria-hidden="true" /> Hide (V)
+                        <EyeOff size={15} aria-hidden="true" /> Hide
                       </>
                     ) : (
                       <>
-                        <Eye size={15} aria-hidden="true" /> Peek (V)
+                        <Eye size={15} aria-hidden="true" /> Peek
                       </>
                     )}
                   </button>
@@ -759,16 +791,18 @@ export function TrainArena({
               <button
                 type="button"
                 className="btn btn-sm"
+                title="Skip (Space)"
                 onClick={() => submitAttempt("skipped", null, inputVal || "[skipped]")}
               >
-                <SkipForward size={15} aria-hidden="true" /> Skip (Space)
+                <SkipForward size={15} aria-hidden="true" /> Skip
               </button>
               <button
                 type="button"
                 className="btn btn-sm btn-danger"
+                title="End Drill (Esc)"
                 onClick={() => void finishSession(attemptsRef.current)}
               >
-                <Square size={14} aria-hidden="true" /> End Drill (Esc)
+                <Square size={14} aria-hidden="true" /> End Drill
               </button>
             </div>
           </div>
@@ -851,11 +885,16 @@ export function TrainArena({
                   fontSize: "1.25rem",
                   fontWeight: 700,
                 }}
+                onPointerDown={(e) => {
+                  if (showKeypad || isCoarsePointer) {
+                    e.preventDefault();
+                  }
+                }}
                 onClick={() => {
                   handleInputChange(
                     inputVal.startsWith("-") ? inputVal.slice(1) : `-${inputVal}`,
                   );
-                  inputRef.current?.focus();
+                  focusIfHardwareKeyboard();
                 }}
               >
                 ±
@@ -869,7 +908,8 @@ export function TrainArena({
               id="drill-answer-input"
               className="answer-input"
               type="text"
-              inputMode="numeric"
+              inputMode={showKeypad ? "none" : "numeric"}
+              readOnly={showKeypad && isCoarsePointer}
               pattern="-?[0-9]*"
               autoComplete="off"
               autoCorrect="off"
@@ -878,6 +918,11 @@ export function TrainArena({
               value={inputVal}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleInputKeyDown}
+              onFocus={(e) => {
+                if (showKeypad && isCoarsePointer) {
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder={
                 config.submissionMode === "enter" ? "Answer" : "Type answer"
               }
@@ -898,7 +943,14 @@ export function TrainArena({
               type="button"
               className="btn btn-sm"
               aria-expanded={showKeypad}
-              onClick={() => setShowKeypad((k) => !k)}
+              onClick={() => {
+                const next = !showKeypad;
+                showKeypadRef.current = next;
+                setShowKeypad(next);
+                if (next) {
+                  inputRef.current?.blur();
+                }
+              }}
             >
               {showKeypad ? "Hide Keypad" : "Touch Keypad"}
             </button>
@@ -916,6 +968,11 @@ export function TrainArena({
                     key={key}
                     type="button"
                     className="keypad-btn"
+                    onPointerDown={(e) => {
+                      if (showKeypad) {
+                        e.preventDefault();
+                      }
+                    }}
                     onClick={() => {
                       if (key === "⌫") {
                         handleInputChange(inputVal.slice(0, -1));
@@ -928,7 +985,7 @@ export function TrainArena({
                       } else {
                         handleInputChange(`${inputVal}${key}`);
                       }
-                      inputRef.current?.focus();
+                      focusIfHardwareKeyboard();
                     }}
                   >
                     {key}
@@ -961,13 +1018,11 @@ export function TrainArena({
         </section>
 
         {attempts.length > 0 && (
-          <section className="panel" aria-label="Recent attempt tape">
-            <h2
-              className="section-title"
-              style={{ fontSize: "0.9375rem", marginBlockEnd: "0.65rem" }}
-            >
-              Live Attempt Tape (Latest 5)
-            </h2>
+          <details className="drill-tape-details">
+            <summary>
+              <span>Attempt Tape ({attempts.length})</span>
+              <span>Latest {Math.min(attempts.length, 5)} ▾</span>
+            </summary>
             <div className="attempt-tape">
               {[...attempts]
                 .reverse()
@@ -998,7 +1053,7 @@ export function TrainArena({
                   </div>
                 ))}
             </div>
-          </section>
+          </details>
         )}
       </div>
     );

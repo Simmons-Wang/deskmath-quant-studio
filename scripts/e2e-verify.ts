@@ -173,22 +173,105 @@ async function main() {
         .waitFor();
       await assertNoHorizontalOverflow(iphonePage, "iPhone Active Drill");
 
-      for (let i = 0; i < 3; i += 1) {
+      // Focus Mode on mobile hides bottom .app-nav & uses compact 1-line status bar
+      assert.equal(
+        await iphonePage
+          .locator("nav.app-nav")
+          .evaluate((el) => getComputedStyle(el).display),
+        "none",
+      );
+      assert.equal(
+        await iphonePage.locator(".drill-status-line").isVisible(),
+        true,
+      );
+      assert.equal(await iphonePage.locator(".hud-metric").count(), 0);
+
+      // Toggle Touch Keypad -> must suppress system keyboard (inputMode="none", readOnly, blurred)
+      await iphonePage.getByRole("button", { name: "Touch Keypad" }).tap();
+      await iphonePage.locator(".keypad-grid").waitFor();
+      const keypadInputState = await iphonePage
+        .locator("#drill-answer-input")
+        .evaluate((el) => {
+          const input = el as HTMLInputElement;
+          return {
+            inputMode: input.inputMode,
+            readOnly: input.readOnly,
+            isFocused: document.activeElement === input,
+          };
+        });
+      assert.equal(keypadInputState.inputMode, "none");
+      assert.equal(keypadInputState.readOnly, true);
+      assert.equal(keypadInputState.isFocused, false);
+
+      // Tap keypad digit '1' and backspace '⌫' without focusing #drill-answer-input
+      const keypad = iphonePage.locator(".keypad-grid");
+      await keypad.getByRole("button", { name: "1", exact: true }).tap();
+      assert.equal(
+        await iphonePage.locator("#drill-answer-input").inputValue(),
+        "1",
+      );
+      assert.equal(
+        await iphonePage.evaluate(
+          () => document.activeElement?.id === "drill-answer-input",
+        ),
+        false,
+      );
+      await keypad.getByRole("button", { name: "⌫", exact: true }).tap();
+      assert.equal(
+        await iphonePage.locator("#drill-answer-input").inputValue(),
+        "",
+      );
+
+      // Solve attempt #1 completely via Touch Keypad + Submit without focusing input
+      const eq1Text = await iphonePage.locator(".equation-display").innerText();
+      const ans1 = evalDisplayEq(eq1Text);
+      for (const ch of String(ans1)) {
+        await keypad.getByRole("button", { name: ch, exact: true }).tap();
+      }
+      await iphonePage.getByRole("button", { name: "Submit", exact: true }).tap();
+      assert.equal(
+        await iphonePage.evaluate(
+          () => document.activeElement?.id === "drill-answer-input",
+        ),
+        false,
+      );
+      const tapeOpen = await iphonePage
+        .locator("details.drill-tape-details")
+        .evaluate((el) => (el as HTMLDetailsElement).open);
+      assert.equal(tapeOpen, false);
+
+      await iphonePage.screenshot({
+        path: path.join(SHOTS_DIR, "iphone_02_drill.png"),
+        fullPage: false,
+      });
+
+      // Hide Touch Keypad -> verifies inputMode returns to numeric & solves 2 more attempts
+      await iphonePage.getByRole("button", { name: "Hide Keypad" }).tap();
+      assert.equal(
+        await iphonePage
+          .locator("#drill-answer-input")
+          .evaluate((el) => (el as HTMLInputElement).inputMode),
+        "numeric",
+      );
+
+      for (let i = 1; i < 3; i += 1) {
         const eqText = await iphonePage.locator(".equation-display").innerText();
         const ans = evalDisplayEq(eqText);
         const val = i === 2 ? ans + 100 : ans; // 3rd is intentional carry slip
         await iphonePage.locator("#drill-answer-input").fill(String(val));
         await iphonePage.locator("#drill-answer-input").press("Enter");
       }
-      await iphonePage.screenshot({
-        path: path.join(SHOTS_DIR, "iphone_02_drill.png"),
-        fullPage: true,
-      });
 
       await iphonePage.getByRole("button", { name: /End Drill/i }).tap();
       await iphonePage
         .getByRole("heading", { name: "Session Debrief" })
         .waitFor();
+      assert.equal(
+        await iphonePage
+          .locator("nav.app-nav")
+          .evaluate((el) => getComputedStyle(el).position),
+        "fixed",
+      );
       await assertNoHorizontalOverflow(iphonePage, "iPhone Session Debrief");
 
       // Navigate via bottom tab bar to Mistakes

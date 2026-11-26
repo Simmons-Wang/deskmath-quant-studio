@@ -109,6 +109,7 @@ export function DeskMathStudio() {
     attemptId: string | null;
     question: string;
   } | null>(null);
+  const [isDrillRunning, setIsDrillRunning] = useState(false);
   const [liveMessage, setLiveMessage] = useState("");
 
   const announce = useCallback((msg: string) => {
@@ -360,7 +361,13 @@ export function DeskMathStudio() {
   }
 
   return (
-    <div className="app-frame">
+    <div
+      className={
+        isDrillRunning && activeView === "train"
+          ? "app-frame is-drilling"
+          : "app-frame"
+      }
+    >
       <a href="#main-content" className="skip-link visually-hidden">
         Skip to main content
       </a>
@@ -504,6 +511,7 @@ export function DeskMathStudio() {
               });
               setActiveView("coach");
             }}
+            onActiveChange={setIsDrillRunning}
             announce={announce}
           />
         )}
